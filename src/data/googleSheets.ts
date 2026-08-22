@@ -2,7 +2,7 @@ import { buildSheets, demoPages } from './portfolioData';
 import type { MediaKind, PageType, PortfolioDataResult, PortfolioPage } from './types';
 
 const DEFAULT_GOOGLE_SHEET_ID = '1EUhk_-_uWbQkyMQkdimEscjaun1v7lgWm5f5XDWYlo0';
-const DEFAULT_GOOGLE_SHEET_TAB = 'Portfolio Main';
+const DEFAULT_GOOGLE_SHEET_TAB = 'Main';
 const DEFAULT_GOOGLE_SHEET_GID = '0';
 const DEFAULT_PORTFOLIO_IMAGE_BASE_PATH = 'portfolio/';
 
