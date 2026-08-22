@@ -1,0 +1,2 @@
+export enum BookStatus { CLOSED='CLOSED', OPENING='OPENING', OPEN='OPEN', TURNING_FORWARD='TURNING_FORWARD', TURNING_BACKWARD='TURNING_BACKWARD', CLOSING='CLOSING' }
+export type TurnDirection = 'forward' | 'backward';
