@@ -17,16 +17,29 @@ npm run build
 
 ## Environment
 
-Copy `.env.example` to `.env.local`. The included defaults target the shared **Portfolio Main** sheet:
+Environment variables are optional overrides. Production works without any GitHub Actions secrets because the public Portfolio Main Sheet is configured in the client code by default.
+
+Default runtime configuration:
+
+```text
+Sheet ID: 1EUhk_-_uWbQkyMQkdimEscjaun1v7lgWm5f5XDWYlo0
+Tab label: Portfolio Main
+Tab gid: 0
+Fetch URL: https://docs.google.com/spreadsheets/d/1EUhk_-_uWbQkyMQkdimEscjaun1v7lgWm5f5XDWYlo0/gviz/tq?tqx=out:csv&gid=0
+Image base URL: ${import.meta.env.BASE_URL}portfolio/
+```
+
+Optional overrides from `.env.local` or deployment env are applied in this order: explicit environment value first, then the configured public default, then demo data only when `VITE_USE_DEMO_DATA=true`.
 
 ```text
 VITE_GOOGLE_SHEET_ID=1EUhk_-_uWbQkyMQkdimEscjaun1v7lgWm5f5XDWYlo0
 VITE_GOOGLE_SHEET_TAB=Portfolio Main
-VITE_PORTFOLIO_IMAGE_BASE_URL=/portfolio/
+VITE_GOOGLE_SHEET_GID=0
+VITE_PORTFOLIO_IMAGE_BASE_URL=/Portfolio_Test/portfolio/
 VITE_USE_DEMO_DATA=false
 ```
 
-`VITE_PORTFOLIO_IMAGE_BASE_URL` is used when the sheet `source` value is a filename such as `cover.jpg` instead of a full URL. With the default value, put those files in `public/portfolio/`.
+`VITE_PORTFOLIO_IMAGE_BASE_URL` is used when the sheet `source` value is a filename such as `cover.jpg` instead of a full URL. Without an override, the app uses the current Vite base path plus `portfolio/`, so GitHub Pages resolves filenames under `/Portfolio_Test/portfolio/`.
 
 ## Google Sheets setup
 
@@ -48,7 +61,7 @@ Rows with an empty `source` are ignored, so pre-numbered blank rows do not break
 | Column | Purpose |
 | --- | --- |
 | `id` | Unique page ID; otherwise `page-{page No.}` is generated |
-| `page_type` | Optional `cover`, `page`, or `back_cover`; otherwise the first row or cover-like filename becomes the cover |
+| `page_type` | Optional `cover`, `page`, or `back_cover`; otherwise page 1 or a cover-like filename becomes the cover |
 | `enabled` | Optional publish flag; `FALSE`, `0`, `NO`, or `disabled` hides the row |
 | `image_url` | Alias for `source` |
 | `page_order` | Alias for `page No.` |
@@ -79,7 +92,7 @@ Google Sheets → Data Layer → Book Controller → Three.js Renderer
 
 This repository is deployed at `https://wrathishere.github.io/Portfolio_Test/`, so Vite must build production assets with the `/Portfolio_Test/` base path. `vite.config.ts` sets that base by default and the GitHub Pages workflow passes `VITE_BASE_PATH=/Portfolio_Test/` during the build. If you fork or rename the repository, update `VITE_BASE_PATH` in the workflow or set it in your deployment environment.
 
-The workflow in `.github/workflows/deploy.yml` installs dependencies, runs `npm run build`, uploads `dist`, and deploys through GitHub Pages. The React shell also includes a runtime error boundary so a Three.js/WebGL or texture-loading failure displays the accessible gallery instead of a blank white page.
+The workflow in `.github/workflows/deploy.yml` installs dependencies, runs `npm run build`, uploads `dist`, and deploys through GitHub Pages. No Sheet secrets are required because the public Sheet ID and gid are built-in defaults. The React shell also includes a runtime error boundary so a Three.js/WebGL or texture-loading failure displays the accessible gallery instead of a blank white page.
 
 ## Controls and fallback
 

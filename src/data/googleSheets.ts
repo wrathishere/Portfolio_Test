@@ -1,6 +1,11 @@
 import { buildSheets, demoPages } from './portfolioData';
 import type { MediaKind, PageType, PortfolioDataResult, PortfolioPage } from './types';
 
+const DEFAULT_GOOGLE_SHEET_ID = '1EUhk_-_uWbQkyMQkdimEscjaun1v7lgWm5f5XDWYlo0';
+const DEFAULT_GOOGLE_SHEET_TAB = 'Main';
+const DEFAULT_GOOGLE_SHEET_GID = '0';
+const DEFAULT_PORTFOLIO_IMAGE_BASE_PATH = 'portfolio/';
+
 const requiredColumnGroups = [
   ['page_order', 'page no.', 'page no', 'page', 'order'],
   ['image_url', 'source', 'image', 'image url'],
@@ -16,8 +21,67 @@ const optionalColumns = {
 const validPageTypes = new Set<PageType>(['cover', 'page', 'back_cover']);
 const videoExtensions = new Set(['mp4', 'webm', 'mov', 'm4v']);
 
-function googleCsvUrl(sheetId: string, tab: string) {
-  return `https://docs.google.com/spreadsheets/d/${encodeURIComponent(sheetId)}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`;
+interface PortfolioConfig {
+  sheetId: string;
+  tab: string;
+  gid: string;
+  imageBaseUrl: string;
+  useDemoData: boolean;
+  fetchUrl: string;
+  sources: {
+    sheetId: 'environment' | 'default';
+    tab: 'environment' | 'default';
+    gid: 'environment' | 'default';
+    imageBaseUrl: 'environment' | 'default';
+  };
+}
+
+function normalizedBaseUrl(value: string) {
+  return value.endsWith('/') ? value : `${value}/`;
+}
+
+function defaultImageBaseUrl() {
+  return new URL(DEFAULT_PORTFOLIO_IMAGE_BASE_PATH, window.location.origin + import.meta.env.BASE_URL).toString();
+}
+
+function getPortfolioConfig(): PortfolioConfig {
+  const envSheetId = import.meta.env.VITE_GOOGLE_SHEET_ID?.trim();
+  const envTab = import.meta.env.VITE_GOOGLE_SHEET_TAB?.trim();
+  const envGid = import.meta.env.VITE_GOOGLE_SHEET_GID?.trim();
+  const envImageBaseUrl = import.meta.env.VITE_PORTFOLIO_IMAGE_BASE_URL?.trim();
+  const sheetId = envSheetId || DEFAULT_GOOGLE_SHEET_ID;
+  const tab = envTab || DEFAULT_GOOGLE_SHEET_TAB;
+  const gid = envGid || DEFAULT_GOOGLE_SHEET_GID;
+  const imageBaseUrl = normalizedBaseUrl(envImageBaseUrl || defaultImageBaseUrl());
+  const fetchUrl = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(sheetId)}/gviz/tq?tqx=out:csv&gid=${encodeURIComponent(gid)}`;
+
+  return {
+    sheetId,
+    tab,
+    gid,
+    imageBaseUrl,
+    useDemoData: import.meta.env.VITE_USE_DEMO_DATA === 'true',
+    fetchUrl,
+    sources: {
+      sheetId: envSheetId ? 'environment' : 'default',
+      tab: envTab ? 'environment' : 'default',
+      gid: envGid ? 'environment' : 'default',
+      imageBaseUrl: envImageBaseUrl ? 'environment' : 'default',
+    },
+  };
+}
+
+function logFetchFailure(config: PortfolioConfig, error: unknown, status?: number) {
+  console.error('Google Sheets portfolio fetch failed.', {
+    status: status ?? 'request-error',
+    sheetId: config.sheetId,
+    tab: config.tab,
+    gid: config.gid,
+    fetchUrl: config.fetchUrl,
+    configSources: config.sources,
+    imageBaseUrl: config.imageBaseUrl,
+    error,
+  });
 }
 
 function parseCsv(text: string): string[][] {
@@ -78,13 +142,12 @@ function makeVideoPoster(source: string, title: string) {
     </svg>`)} `;
 }
 
-function resolveSource(source: string, title: string) {
+function resolveSource(source: string, title: string, imageBaseUrl: string) {
   const mediaKind = mediaKindFor(source);
   if (mediaKind === 'video') return { mediaKind, imageUrl: makeVideoPoster(source, title) };
   if (/^(https?:|data:|blob:|\/)/i.test(source)) return { mediaKind, imageUrl: source };
 
-  const baseUrl = import.meta.env.VITE_PORTFOLIO_IMAGE_BASE_URL || '/portfolio/';
-  return { mediaKind, imageUrl: `${baseUrl.replace(/\/$/, '')}/${source.replace(/^\//, '')}` };
+  return { mediaKind, imageUrl: new URL(source.replace(/^\//, ''), imageBaseUrl).toString() };
 }
 
 function inferPageType(order: number, source: string, explicitType: string): PageType {
@@ -94,14 +157,14 @@ function inferPageType(order: number, source: string, explicitType: string): Pag
   return 'page';
 }
 
-function normalizeRows(rows: string[][]): { pages: PortfolioPage[]; warnings: string[] } {
+function normalizeRows(rows: string[][], config: PortfolioConfig): { pages: PortfolioPage[]; warnings: string[] } {
   const warnings: string[] = [];
   const header = (rows.shift() ?? []).map((heading) => heading.trim().toLowerCase());
   const requiredIndexes = requiredColumnGroups.map((aliases) => columnIndex(header, aliases));
 
   requiredColumnGroups.forEach((aliases, groupIndex) => {
     if (requiredIndexes[groupIndex] < 0) {
-      throw new Error(`Google Sheet is missing a required column. Expected one of: ${aliases.join(', ')}`);
+      throw new Error(`Google Sheet ${config.sheetId} (gid ${config.gid}, tab ${config.tab}) is missing a required column. Expected one of: ${aliases.join(', ')}.`);
     }
   });
 
@@ -126,7 +189,7 @@ function normalizeRows(rows: string[][]): { pages: PortfolioPage[]; warnings: st
       return;
     }
 
-    const { mediaKind, imageUrl } = resolveSource(source, title);
+    const { mediaKind, imageUrl } = resolveSource(source, title, config.imageBaseUrl);
     const type = inferPageType(order, source, valueAt(row, typeIndex));
 
     pages.push({
@@ -144,34 +207,37 @@ function normalizeRows(rows: string[][]): { pages: PortfolioPage[]; warnings: st
 
   pages.sort((left, right) => left.order - right.order);
 
-  if (!pages.length) throw new Error('Google Sheet did not contain any enabled rows with a page number and source.');
+  if (!pages.length) throw new Error(`Google Sheet ${config.sheetId} (gid ${config.gid}, tab ${config.tab}) did not contain any enabled rows with a page number and source.`);
   if (!pages.some((page) => page.type === 'cover')) warnings.push('No explicit cover was found; the first row or cover-like filename is used as the cover.');
 
   return { pages, warnings };
 }
 
 export async function fetchPortfolioPages(): Promise<PortfolioDataResult> {
-  const sheetId = import.meta.env.VITE_GOOGLE_SHEET_ID;
-  const tab = import.meta.env.VITE_GOOGLE_SHEET_TAB || 'Portfolio Main';
-  const useDemoData = import.meta.env.VITE_USE_DEMO_DATA === 'true';
+  const config = getPortfolioConfig();
 
-  if (!sheetId) {
-    if (useDemoData) {
+  try {
+    const response = await fetch(config.fetchUrl);
+    if (!response.ok) {
+      logFetchFailure(config, `HTTP ${response.status} ${response.statusText}`, response.status);
+      throw new Error(`Google Sheets fetch failed with HTTP ${response.status} ${response.statusText}. Sheet ID: ${config.sheetId}. GID: ${config.gid}. Tab label: ${config.tab}. URL: ${config.fetchUrl}.`);
+    }
+
+    const { pages, warnings } = normalizeRows(parseCsv(await response.text()), config);
+    return { pages, sheets: buildSheets(pages), warnings, source: 'google-sheets' };
+  } catch (error) {
+    if (config.useDemoData) {
+      console.warn('Using explicit demo data because VITE_USE_DEMO_DATA=true after the Google Sheets fetch failed.', { error, config });
       return {
         pages: demoPages,
         sheets: buildSheets(demoPages),
-        warnings: ['Using explicit demo data because VITE_GOOGLE_SHEET_ID is empty.'],
+        warnings: ['Using explicit demo data because VITE_USE_DEMO_DATA=true after the Google Sheets fetch failed.'],
         source: 'demo',
       };
     }
-    throw new Error('Set VITE_GOOGLE_SHEET_ID or enable VITE_USE_DEMO_DATA=true for local demo content.');
-  }
 
-  const response = await fetch(googleCsvUrl(sheetId, tab));
-  if (!response.ok) {
-    throw new Error(`Google Sheets request failed (${response.status}). Confirm the sheet is shared publicly and the tab name is correct.`);
+    logFetchFailure(config, error);
+    if (error instanceof Error) throw error;
+    throw new Error(`Google Sheets fetch failed for Sheet ID ${config.sheetId}, gid ${config.gid}, tab ${config.tab}. URL: ${config.fetchUrl}.`);
   }
-
-  const { pages, warnings } = normalizeRows(parseCsv(await response.text()));
-  return { pages, sheets: buildSheets(pages), warnings, source: 'google-sheets' };
 }
