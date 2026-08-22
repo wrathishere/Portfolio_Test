@@ -3,6 +3,7 @@ import { BookCanvas } from './book/Book';
 import { BookController } from './book/BookController';
 import { FallbackGallery } from './components/FallbackGallery';
 import { Navigation } from './components/Navigation';
+import { RuntimeErrorBoundary } from './components/RuntimeErrorBoundary';
 import { fetchPortfolioPages } from './data/googleSheets';
 import type { PortfolioDataResult } from './data/types';
 import { usePrefersReducedMotion } from './hooks/usePrefersReducedMotion';
@@ -59,17 +60,19 @@ export default function App() {
     );
   }
 
-  if (!canUseWebGL()) return <FallbackGallery pages={data.pages} />;
+  if (!canUseWebGL()) return <FallbackGallery pages={data.pages} reason="WebGL is unavailable in this browser." />;
 
   const innerPageCount = data.pages.filter((page) => page.type === 'page').length;
 
   return (
-    <main className="app">
-      <section className="stage" aria-label="Interactive 3D portfolio book">
-        <BookCanvas pages={data.pages} controller={controller} />
-      </section>
-      <Navigation controller={controller} current={controller.spread * 2 + 1} total={innerPageCount} onTick={() => forceRender((value) => value + 1)} />
-      <p className="hint">Click the closed book to open. Drag page corners, swipe, or use arrow keys to browse.</p>
-    </main>
+    <RuntimeErrorBoundary fallback={<FallbackGallery pages={data.pages} reason="The 3D renderer could not start, so the accessible portfolio gallery is shown instead." />}>
+      <main className="app">
+        <section className="stage" aria-label="Interactive 3D portfolio book">
+          <BookCanvas pages={data.pages} controller={controller} />
+        </section>
+        <Navigation controller={controller} current={controller.spread * 2 + 1} total={innerPageCount} onTick={() => forceRender((value) => value + 1)} />
+        <p className="hint">Click the closed book to open. Drag page corners, swipe, or use arrow keys to browse.</p>
+      </main>
+    </RuntimeErrorBoundary>
   );
 }

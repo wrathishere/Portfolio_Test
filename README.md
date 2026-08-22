@@ -74,6 +74,13 @@ Google Sheets → Data Layer → Book Controller → Three.js Renderer
 - `src/book/pageDeformation.ts` deforms the active page mesh from progress `0` to `1`, adding lift, curl, leading-edge travel, and flattening.
 - `src/book/Book.tsx` renders separate rigid covers, spine, page stacks, visible pages, two-sided active turning page, lighting, shadows, and camera transitions.
 
+
+## GitHub Pages deployment
+
+This repository is deployed at `https://wrathishere.github.io/Portfolio_Test/`, so Vite must build production assets with the `/Portfolio_Test/` base path. `vite.config.ts` sets that base by default and the GitHub Pages workflow passes `VITE_BASE_PATH=/Portfolio_Test/` during the build. If you fork or rename the repository, update `VITE_BASE_PATH` in the workflow or set it in your deployment environment.
+
+The workflow in `.github/workflows/deploy.yml` installs dependencies, runs `npm run build`, uploads `dist`, and deploys through GitHub Pages. The React shell also includes a runtime error boundary so a Three.js/WebGL or texture-loading failure displays the accessible gallery instead of a blank white page.
+
 ## Controls and fallback
 
 Click/tap the closed book to open. Click or drag the right side to go forward and the left side to go backward. Arrow keys and the minimal external controls drive the same state machine. If WebGL is unavailable, the site renders an accessible image gallery in page order.
