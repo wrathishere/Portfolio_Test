@@ -17,35 +17,50 @@ npm run build
 
 ## Environment
 
-Copy `.env.example` to `.env.local`:
+Copy `.env.example` to `.env.local`. The included defaults target the shared **Portfolio Main** sheet:
 
 ```text
-VITE_GOOGLE_SHEET_ID=
-VITE_GOOGLE_SHEET_TAB=Portfolio
-VITE_USE_DEMO_DATA=true
+VITE_GOOGLE_SHEET_ID=1EUhk_-_uWbQkyMQkdimEscjaun1v7lgWm5f5XDWYlo0
+VITE_GOOGLE_SHEET_TAB=Portfolio Main
+VITE_PORTFOLIO_IMAGE_BASE_URL=/portfolio/
+VITE_USE_DEMO_DATA=false
 ```
 
-Set `VITE_USE_DEMO_DATA=false` in production so missing Sheet configuration becomes a visible error instead of local demo content.
+`VITE_PORTFOLIO_IMAGE_BASE_URL` is used when the sheet `source` value is a filename such as `cover.jpg` instead of a full URL. With the default value, put those files in `public/portfolio/`.
 
 ## Google Sheets setup
 
-Create a public Google Sheet with one row per physical portfolio page. Required columns:
+The app supports the provided sheet format and the more explicit production schema. Each row still represents one physical book page and each page is rendered from one image/poster source.
+
+### Provided sheet columns
 
 | Column | Purpose |
 | --- | --- |
-| `id` | Unique page ID |
-| `page_order` | Numeric sort order |
-| `image_url` | Hosted image for this page |
-| `page_type` | `cover`, `page`, or `back_cover` |
-| `project` | Optional project label |
-| `title` | Optional title/alt label |
-| `enabled` | `TRUE` to publish; `FALSE` to hide |
+| `page No.` | Numeric page order |
+| `category` | Project/category label and fallback page title |
+| `source` | Image URL, relative filename, or video filename |
+| `year` | Optional year metadata |
 
-Share the sheet as **Anyone with the link can view**. The Sheet ID is the long string in `/spreadsheets/d/<ID>/edit`. The tab name should match `VITE_GOOGLE_SHEET_TAB`. Add a page by adding a row with a unique order. Disable a page by setting `enabled` to `FALSE`. Pages are sorted by `page_order`; disabled or invalid rows are ignored with development warnings.
+Rows with an empty `source` are ignored, so pre-numbered blank rows do not break the book.
+
+### Optional production columns
+
+| Column | Purpose |
+| --- | --- |
+| `id` | Unique page ID; otherwise `page-{page No.}` is generated |
+| `page_type` | Optional `cover`, `page`, or `back_cover`; otherwise the first row or cover-like filename becomes the cover |
+| `enabled` | Optional publish flag; `FALSE`, `0`, `NO`, or `disabled` hides the row |
+| `image_url` | Alias for `source` |
+| `page_order` | Alias for `page No.` |
+| `project` / `title` | Optional richer labels |
+
+Share the sheet as **Anyone with the link can view**. The Sheet ID is the long string in `/spreadsheets/d/<ID>/edit`. The tab name should match `VITE_GOOGLE_SHEET_TAB`. Add a page by adding a row with a unique page number. Disable a page by setting `enabled` to `FALSE`. Pages are sorted numerically by page number/order; disabled or invalid rows are ignored with development warnings.
 
 ## Image recommendations
 
-Use one finished image per portfolio page. Recommended page artwork is portrait 3:4, such as 1200×1600 or 1800×2400. Use WebP or AVIF for best quality/size; JPEG is fine for photographic work. Keep individual images near 300–700 KB when possible and host them with CORS-friendly public URLs.
+Use one finished image per portfolio page. Recommended page artwork is portrait 3:4, such as 1200×1600 or 1800×2400. Use WebP or AVIF for best quality/size; JPEG and PNG are also supported. Keep individual images near 300–700 KB when possible and host them with CORS-friendly public URLs.
+
+If your sheet uses local filenames (`cover.jpg`, `test.jpg`), put those files in `public/portfolio/` or set `VITE_PORTFOLIO_IMAGE_BASE_URL` to the public folder/CDN where they live. Video filenames such as `test.mp4` are accepted and represented by generated matte poster pages in the WebGL book; provide a matching poster image when final artwork should appear in the book.
 
 ## Architecture
 
@@ -53,11 +68,11 @@ Use one finished image per portfolio page. Recommended page artwork is portrait 
 Google Sheets → Data Layer → Book Controller → Three.js Renderer
 ```
 
-- `src/data/googleSheets.ts` fetches CSV output, validates rows, filters disabled content, and sorts page order.
+- `src/data/googleSheets.ts` fetches CSV output, validates flexible required columns, filters disabled/blank content, resolves filenames, and sorts page order.
 - `src/data/portfolioData.ts` contains explicit demo data and maps ordered pages into physical sheets.
 - `src/book/BookController.ts` is the central state machine for `CLOSED`, `OPENING`, `OPEN`, `TURNING_FORWARD`, `TURNING_BACKWARD`, and `CLOSING` behavior.
 - `src/book/pageDeformation.ts` deforms the active page mesh from progress `0` to `1`, adding lift, curl, leading-edge travel, and flattening.
-- `src/book/Book.tsx` renders separate covers, spine, page stacks, visible pages, active turning page, lighting, shadows, and camera transitions.
+- `src/book/Book.tsx` renders separate rigid covers, spine, page stacks, visible pages, two-sided active turning page, lighting, shadows, and camera transitions.
 
 ## Controls and fallback
 
