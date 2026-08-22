@@ -1,0 +1,1 @@
+export function canUseWebGL(){ try { const c=document.createElement('canvas'); return !!(window.WebGLRenderingContext && (c.getContext('webgl') || c.getContext('experimental-webgl'))); } catch { return false; } }
