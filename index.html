@@ -6,34 +6,32 @@
 <title>Joydip Bhattacharya — Selected Works</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<svg width="0" height="0"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/></filter></svg>
-<div class="grain" style="filter:url(#noise); background:#fff;"></div>
+<header class="site-header">
+  <div class="brand">Joydip Bhattacharya</div>
+  <nav class="category-nav" id="categoryNav"></nav>
+</header>
 
-<div class="brand">Joydip Bhattacharya <span>— Selected Works</span></div>
 <div class="status" id="status"></div>
 
-<div class="stage" id="stage">
-  <div class="stage-loading" id="stageLoading">
-    <div class="spinner"></div>
-    <div id="loadingText">Loading portfolio…</div>
-  </div>
-  <div id="bookCanvas"></div>
+<div class="page-loading" id="pageLoading">
+  <div class="spinner"></div>
+  <div>Loading portfolio…</div>
 </div>
 
-<div class="nav">
-  <button id="btnPrev" aria-label="Previous page">&#8592;</button>
-  <button class="index-btn" id="btnIndex">Cover</button>
-  <span class="counter" id="counter">—</span>
-  <button id="btnNext" aria-label="Next page">&#8594;</button>
-</div>
+<main id="gallery"></main>
+
+<footer class="site-footer">
+  <span>Joydip Bhattacharya — Graphic Designer</span>
+  <span>Selected Works</span>
+</footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="js/data.js"></script>
-<script type="module" src="js/main.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>
