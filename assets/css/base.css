@@ -3,16 +3,17 @@
    ========================================================================== */
 
 :root {
-  --bg: #f6f5f2;
-  --surface: #ecebe6;
-  --surface-2: #e4e2dc;
-  --ink: #141413;
-  --ink-2: #44433f;
-  --muted: #77756f;
-  --line: rgba(20, 20, 19, 0.12);
+  --bg: #faf9f7;
+  --surface: #efede8;
+  --surface-2: #e6e3dc;
+  --ink: #161615;
+  --ink-2: #4a4945;
+  --muted: #7d7b75;
+  --line: rgba(22, 22, 21, 0.12);
 
-  --font-display: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  /* Light, geometric sans for both display and body (matches the mockups). */
+  --font-display: "Jost", "Avenir Next", "Avenir", "Century Gothic", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Jost", "Avenir Next", "Avenir", "Century Gothic", "Segoe UI", system-ui, sans-serif;
 
   --gutter: clamp(20px, 4vw, 56px);
   --max: 1400px;
@@ -45,7 +46,7 @@ body {
   flex-direction: column;
   background: var(--bg);
   color: var(--ink);
-  font: 400 16px/1.65 var(--font-body);
+  font: 300 16px/1.7 var(--font-body);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -125,8 +126,9 @@ button {
 }
 
 .eyebrow {
-  font-size: 12px;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.32em;
   text-transform: uppercase;
   color: var(--muted);
 }

@@ -4,6 +4,10 @@ import { h } from '../utils/dom.js';
  * Project detail view: a full-screen dialog with the project's images, its
  * description, keyboard (←/→/Esc) and swipe navigation. Built on <dialog>, so
  * focus is trapped and Esc works natively. One instance serves the whole page.
+ *
+ * This is the ONLY place original (full-resolution) images are requested. Items
+ * are `{ src: original, thumb?: preview, alt }`. If an original fails, the
+ * thumbnail (already cached from the grid) is shown instead.
  */
 export function createLightbox() {
   let dialog = null;
@@ -43,6 +47,12 @@ export function createLightbox() {
       els.img.hidden = false;
     });
     els.img.addEventListener('error', () => {
+      // Original failed: fall back to the thumbnail once, otherwise give up.
+      const item = state.items[state.index];
+      if (item?.thumb && els.img.getAttribute('src') !== item.thumb) {
+        els.img.src = item.thumb;
+        return;
+      }
       els.img.hidden = true;
       els.status.textContent = 'This image couldn’t be loaded.';
     });
@@ -82,9 +92,9 @@ export function createLightbox() {
     const item = items[index];
 
     els.img.hidden = false;
-    els.status.textContent = '';
+    els.status.textContent = 'Loading…';
     els.img.alt = item.alt;
-    els.img.src = item.src;
+    els.img.src = item.src; // original, full resolution
 
     els.title.textContent = project.name;
     els.year.textContent = project.year || '';
@@ -96,11 +106,9 @@ export function createLightbox() {
     const single = items.length < 2;
     els.prev.hidden = els.next.hidden = single;
 
-    // Warm the cache for neighbours.
-    for (const offset of [1, -1]) {
-      const neighbour = items[(index + offset + items.length) % items.length];
-      if (neighbour && neighbour !== item) new Image().src = neighbour.src;
-    }
+    // Warm the cache for the NEXT image only (originals are large).
+    const next = items[(index + 1) % items.length];
+    if (next && next !== item) new Image().src = next.src;
   }
 
   function go(step) {

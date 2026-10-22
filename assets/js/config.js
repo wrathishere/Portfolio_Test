@@ -16,7 +16,7 @@
 export const ROOT = new URL('../../', import.meta.url);
 
 export const SITE = {
-  // TODO: replace with your name / studio name (shown in the header & footer).
+  // TODO: replace with your name / studio name (shown on mobile and for screen readers).
   name: 'Portfolio',
 
   /**
@@ -30,6 +30,25 @@ export const SITE = {
     { key: 'packaging', label: 'Packaging And Misc', href: null },
     { key: 'about', label: 'About', href: null },
   ],
+
+  /** Small note at the right of the header (desktop). Each entry is one line. */
+  navNote: ['Ideas', 'Into design'],
+
+  /** Footer sign-off: [left text, right text]. */
+  tagline: ['Good design\nbuilds connections', 'That last.'],
+
+  /**
+   * Closing call-to-action band (used on pages that include <div id="site-cta">).
+   * - `href`: where the band links. `null` = a non-clickable band (set this once
+   *   your About/Contact page or a mailto: link exists).
+   * - `image`: optional path relative to the site root, e.g. 'Images/cta.jpg'.
+   */
+  cta: {
+    eyebrow: 'Have a project in mind?',
+    text: 'Let’s create something meaningful together.',
+    href: null,
+    image: null,
+  },
 };
 
 export const SHEET = {
@@ -64,3 +83,10 @@ export const IMAGE_FOLDERS = {
   motion: 'Images/Motion/',
   packaging: 'Images/Packaging/',
 };
+
+/**
+ * Name of the preview subfolder inside EVERY category folder, e.g.
+ * "Images/Logo Designs/Thumbnail/kynn_logo (1).webp". The filename comes from
+ * the sheet's `thumbnail` column. Case-sensitive on GitHub Pages.
+ */
+export const THUMBNAIL_FOLDER = 'Thumbnail';

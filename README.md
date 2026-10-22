@@ -29,13 +29,26 @@ Data flow: `sheetsClient` (fetch) → `normalizeRows` (validate/clean) → `grou
 
 ## How the sheet is read
 
-- Tab: `logo`. Columns: `image | category | sub-category | year | text | order | Featured`.
+- Tab: `logo`. Columns: `image | category | sub-category | year | text | order | Featured | thumbnail`.
 - Rows are grouped by `sub-category` (one group = one project).
 - Projects are sorted by `order` (lowest value in the group). Projects without a valid `order` go last.
 - Images inside a project keep the spreadsheet row order.
 - Year and description come from the first row in the group that has them, so only the first row needs filling in.
 - `Featured` is parsed as a Boolean (TRUE/yes/1) and stored for the future Home page.
 - Rows without an `image` filename are skipped (a warning is logged in the browser console with the sheet row number). Missing descriptions or years are simply not shown.
+
+### Thumbnails (all five categories)
+
+Each category folder has a `Thumbnail/` subfolder of optimized `.webp` previews, named in the sheet's `thumbnail` column (H), e.g. `Images/Logo Designs/Thumbnail/kynn_logo (1).webp`.
+
+- Gallery grids load the **thumbnail** only. The **original** (`image` column) is requested only when a lightbox opens (plus the next image, to make arrows instant).
+- Blank `thumbnail` cell, missing file or failed load → the grid quietly falls back to the original (a console warning names the file).
+- If the original also fails, the tile shows "Image unavailable" with the filename.
+- The `Thumbnail` folder name lives in `THUMBNAIL_FOLDER` (`assets/js/config.js`); category folders in `IMAGE_FOLDERS`. Names are case-sensitive on GitHub Pages.
+
+### Filters
+
+If the sheet's `category` column holds two or more distinct values, filter tabs ("All · …") appear automatically above the projects. With a single value (currently "Logo Design") the bar stays hidden.
 
 ### Sheet access (read-only, no credentials)
 
@@ -111,4 +124,5 @@ For a custom domain: **Settings → Pages → Custom domain**, then add the DNS 
 
 - **Name/branding:** `SITE.name` in `assets/js/config.js` (currently "Portfolio").
 - **Colors, type, spacing:** CSS variables at the top of `assets/css/base.css`.
-- **Fonts:** Instrument Serif and Inter load from Google Fonts in each HTML `<head>`; remove those links to use the system fallbacks.
+- **Header note, footer tagline, closing call-to-action band:** `SITE.navNote`, `SITE.tagline`, `SITE.cta` in `assets/js/config.js` (set `cta.href` / `cta.image` when ready).
+- **Font:** Jost loads from Google Fonts in each HTML `<head>`; remove the link to use system fallbacks.

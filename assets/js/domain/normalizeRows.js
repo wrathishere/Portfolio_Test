@@ -53,6 +53,8 @@ export function normalizeRows(table) {
     rows.push({
       sheetRow: rec.__row,
       image,
+      // Optional preview filename (sheet column H). Empty → use the original.
+      thumbnail: clean(rec.thumbnail),
       category: clean(rec.category),
       subcategory: clean(rec.subcategory),
       year: parseYear(rec.year),
@@ -68,6 +70,7 @@ export function normalizeRows(table) {
  * @typedef {object} NormalizedRow
  * @property {number} sheetRow
  * @property {string} image
+ * @property {string} thumbnail
  * @property {string} category
  * @property {string} subcategory
  * @property {string} year

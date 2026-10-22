@@ -44,7 +44,12 @@ export function groupProjects(rows) {
       groups.set(key, project);
     }
 
-    project.images.push({ file: row.image, featured: row.featured, sheetRow: row.sheetRow });
+    project.images.push({
+      file: row.image,
+      thumbnail: row.thumbnail,
+      featured: row.featured,
+      sheetRow: row.sheetRow,
+    });
 
     if (!project.year && row.year) project.year = row.year;
     if (!project.description && row.text) {
@@ -87,5 +92,5 @@ export function groupProjects(rows) {
  * @property {string[]} paragraphs
  * @property {number|null} order
  * @property {boolean} featured
- * @property {{ file: string, featured: boolean, sheetRow: number }[]} images
+ * @property {{ file: string, thumbnail: string, featured: boolean, sheetRow: number }[]} images
  */

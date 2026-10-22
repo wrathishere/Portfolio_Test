@@ -4,6 +4,7 @@ import { pad2 } from '../utils/text.js';
 /** Quiet jump-list of projects shown under the intro. */
 export function renderProjectIndex(container, projects) {
   if (projects.length < 2) {
+    container.replaceChildren();
     container.hidden = true;
     return;
   }

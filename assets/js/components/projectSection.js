@@ -1,6 +1,6 @@
 import { h } from '../utils/dom.js';
 import { pad2 } from '../utils/text.js';
-import { imageUrl } from '../utils/paths.js';
+import { imageUrl, thumbnailUrl } from '../utils/paths.js';
 import { createImageTile } from './imageTile.js';
 import { createMasonry } from './masonry.js';
 
@@ -16,9 +16,12 @@ import { createMasonry } from './masonry.js';
 export function createProjectSection(project, { index, folderKey, lightbox, masonry }) {
   const total = project.images.length;
 
+  // `src` = original (used by the lightbox only); `thumb` = optimized preview
+  // for the grid. `thumb` is '' when the sheet has no thumbnail for the row.
   const items = project.images.map((image, i) => ({
     file: image.file,
     src: imageUrl(folderKey, image.file),
+    thumb: thumbnailUrl(folderKey, image.thumbnail),
     alt: `${project.name}${project.year ? `, ${project.year}` : ''} — image ${i + 1} of ${total}`,
   }));
 
@@ -27,7 +30,11 @@ export function createProjectSection(project, { index, folderKey, lightbox, maso
 
   const tiles = items.map((item, i) =>
     createImageTile({
-      ...item,
+      // Grid shows the thumbnail; the original is only a fallback if it breaks.
+      src: item.thumb || item.src,
+      fallbackSrc: item.thumb ? item.src : '',
+      alt: item.alt,
+      file: item.file,
       priority: index === 0 && i === 0,
       onActivate: (button) => open(i, button),
     }),
@@ -64,5 +71,10 @@ export function createProjectSection(project, { index, folderKey, lightbox, maso
     rest.length ? createMasonry(rest, masonry) : null,
   );
 
-  return h('article', { class: 'project', id: project.id, 'aria-labelledby': titleId }, meta, gallery);
+  return h(
+    'article',
+    { class: 'project', id: project.id, 'aria-labelledby': titleId, dataset: { category: project.category } },
+    meta,
+    gallery,
+  );
 }

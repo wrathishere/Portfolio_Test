@@ -6,6 +6,7 @@ import { h } from '../utils/dom.js';
  * Shared header + primary navigation, rendered from SITE.nav.
  * - `activeKey` gets aria-current="page".
  * - Items without an href render as inert "coming soon" placeholders.
+ * - Desktop: centered nav with a small note on the right (SITE.navNote).
  */
 export function createSiteNav({ activeKey }) {
   const items = SITE.nav.map((item) => {
@@ -34,6 +35,15 @@ export function createSiteNav({ activeKey }) {
     h('span', { class: 'nav-toggle__icon', 'aria-hidden': 'true' }),
   );
 
+  const note = SITE.navNote?.length
+    ? h(
+        'p',
+        { class: 'site-header__note', 'aria-hidden': 'true' },
+        h('span', { class: 'site-header__note-line' }),
+        h('span', {}, SITE.navNote.map((line) => h('span', { class: 'block' }, line))),
+      )
+    : null;
+
   const header = h(
     'header',
     { class: 'site-header' },
@@ -43,6 +53,7 @@ export function createSiteNav({ activeKey }) {
       h('a', { class: 'brand', href: siteUrl('index.html') }, SITE.name),
       toggle,
       nav,
+      note,
     ),
   );
 

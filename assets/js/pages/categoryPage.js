@@ -9,6 +9,7 @@ import { mountShell } from '../shell.js';
 import { loadProjects } from '../domain/loadProjects.js';
 import { createProjectSection } from '../components/projectSection.js';
 import { renderProjectIndex } from '../components/projectIndex.js';
+import { renderFilterBar } from '../components/filterBar.js';
 import { createLightbox } from '../components/lightbox.js';
 import { renderLoading, renderError, renderEmpty } from '../components/states.js';
 import { observeReveal } from '../components/reveal.js';
@@ -21,12 +22,14 @@ function mountHeroImage(hero, folderKey) {
   if (!file) return;
 
   const img = h('img', { class: 'hero__img', src: imageUrl(folderKey, file), alt: '', decoding: 'async' });
-  const figure = h('figure', { class: 'hero__media' }, img);
+  const figure = h('figure', { class: 'hero__media', 'aria-hidden': 'true' }, img);
   img.addEventListener('error', () => {
     figure.remove();
+    hero.classList.remove('has-media');
     console.warn(`[hero] Hero image "${file}" could not be loaded; skipping it.`);
   });
-  hero.after(figure);
+  hero.classList.add('has-media');
+  hero.prepend(figure);
 }
 
 export function mountCategoryPage({ activeKey, tab, folderKey, masonry }) {
@@ -34,6 +37,7 @@ export function mountCategoryPage({ activeKey, tab, folderKey, masonry }) {
 
   const hero = document.getElementById('hero');
   const indexEl = document.getElementById('project-index');
+  const filtersEl = document.getElementById('filters');
   const listEl = document.getElementById('projects');
   const lightbox = createLightbox();
 
@@ -41,6 +45,7 @@ export function mountCategoryPage({ activeKey, tab, folderKey, masonry }) {
 
   async function load() {
     indexEl.hidden = true;
+    if (filtersEl) filtersEl.hidden = true;
     renderLoading(listEl);
 
     try {
@@ -62,7 +67,20 @@ export function mountCategoryPage({ activeKey, tab, folderKey, masonry }) {
       listEl.replaceChildren(...sections);
       listEl.setAttribute('aria-busy', 'false');
 
-      renderProjectIndex(indexEl, projects);
+      // Filter tabs (by category). Hidden automatically when there is only one category.
+      const applyFilter = (value) => {
+        const visible = [];
+        projects.forEach((project, i) => {
+          const show = value === null || project.category.toLowerCase() === value.toLowerCase();
+          sections[i].hidden = !show;
+          if (show) visible.push(project);
+        });
+        renderProjectIndex(indexEl, visible);
+      };
+      // renderFilterBar calls applyFilter(null) itself when it shows; otherwise do it here.
+      const filterShown = filtersEl ? renderFilterBar(filtersEl, projects, { onChange: applyFilter }) : false;
+      if (!filterShown) applyFilter(null);
+
       observeReveal(sections);
 
       // Honour deep links such as logo-designs.html#orizza-project
