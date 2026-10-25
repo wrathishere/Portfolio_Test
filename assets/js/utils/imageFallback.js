@@ -1,29 +1,46 @@
+import { imageSources, rememberFolder } from './paths.js';
+
 /**
- * Loads `primary` into an <img>; if it fails and a different `fallback` is
- * given, loads that instead. Used for "thumbnail first, original if the
- * thumbnail is missing or broken".
+ * Loads a sheet-named WebP into an <img>, trying each candidate folder in turn
+ * (see IMAGE_FOLDERS) until one works. Listeners are attached once, so the same
+ * <img> can be reused for many files (the lightbox does this).
  *
  * @param {HTMLImageElement} img
- * @param {object} o
- * @param {string} o.primary
- * @param {string} [o.fallback]
- * @param {() => void} [o.onFallback]  called when switching to the fallback
- * @param {() => void} [o.onFail]      called when nothing could be loaded
+ * @param {object} [o]
+ * @param {string} [o.folderKey]  default folder key (can be overridden per load)
+ * @param {(url: string) => void} [o.onLoad]
+ * @param {(url: string) => void} [o.onFallback]  a candidate failed; trying the next
+ * @param {(urls: string[]) => void} [o.onFail]   every candidate failed (or no filename)
  */
-export function loadWithFallback(img, { primary, fallback, onFallback, onFail }) {
-  let usedFallback = false;
+export function createImageLoader(img, { folderKey: defaultKey, onLoad, onFallback, onFail } = {}) {
+  let key = defaultKey;
+  let sources = [];
+  let i = 0;
 
-  const onError = () => {
-    if (!usedFallback && fallback && fallback !== primary) {
-      usedFallback = true;
-      onFallback?.();
-      img.src = fallback;
-      return;
+  img.addEventListener('load', () => {
+    rememberFolder(key, sources[i]);
+    onLoad?.(sources[i]);
+  });
+  img.addEventListener('error', () => {
+    if (i + 1 < sources.length) {
+      i += 1;
+      onFallback?.(sources[i]);
+      img.src = sources[i];
+    } else {
+      onFail?.(sources);
     }
-    img.removeEventListener('error', onError);
-    onFail?.();
-  };
+  });
 
-  img.addEventListener('error', onError);
-  img.src = primary;
+  return {
+    load(file, folderKey = defaultKey) {
+      key = folderKey;
+      sources = imageSources(key, file);
+      i = 0;
+      if (!sources.length) {
+        onFail?.(sources);
+        return;
+      }
+      img.src = sources[0];
+    },
+  };
 }

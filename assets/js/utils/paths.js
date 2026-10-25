@@ -1,4 +1,4 @@
-import { ROOT, IMAGE_FOLDERS, THUMBNAIL_FOLDER } from '../config.js';
+import { ROOT, IMAGE_FOLDERS } from '../config.js';
 
 /** Absolute URL for a path relative to the site root (subpath-safe). */
 export function siteUrl(path) {
@@ -11,7 +11,7 @@ export function siteUrl(path) {
  * intended folder. Case is preserved (GitHub Pages is case-sensitive).
  */
 function encodeFilename(filename) {
-  return String(filename)
+  return String(filename ?? '')
     .trim()
     .split('/')
     .filter((seg) => seg && seg !== '.' && seg !== '..')
@@ -19,30 +19,35 @@ function encodeFilename(filename) {
     .join('/');
 }
 
-function folderUrl(folderKey) {
-  const folder = IMAGE_FOLDERS[folderKey];
-  if (!folder) throw new Error(`Unknown image folder key: "${folderKey}"`);
-  return new URL(folder, ROOT); // spaces in folder names are encoded automatically
+function folderBases(folderKey) {
+  const folders = IMAGE_FOLDERS[folderKey];
+  if (!folders) throw new Error(`Unknown image folder key: "${folderKey}"`);
+  return [].concat(folders).map((path) => new URL(path, ROOT)); // spaces in folder names are encoded
 }
 
-/**
- * URL of the ORIGINAL image, from the exact filename in the `image` column.
- * Works under /repo-name/ and encodes names like "kynn_logo (1).jpg".
- */
-export function imageUrl(folderKey, filename) {
-  return new URL(encodeFilename(filename), folderUrl(folderKey)).href;
-}
+// folderKey -> index of the folder that last served an image successfully.
+const preferred = new Map();
 
 /**
- * URL of the optimized preview, from the `thumbnail` column. It lives in the
- * `Thumbnail/` subfolder of the category folder. A sheet value that already
- * starts with "Thumbnail/" is accepted too.
- *
- * Returns '' when the sheet gives no thumbnail, so callers use the original.
+ * Candidate URLs for a WebP file named in the sheet, best guess first (the
+ * folder that already worked for this category, then the others in config order).
+ * Returns [] for a blank filename.
  */
-export function thumbnailUrl(folderKey, filename) {
-  if (!filename || !String(filename).trim()) return '';
-  const name = encodeFilename(String(filename).trim().replace(new RegExp(`^${THUMBNAIL_FOLDER}/`, 'i'), ''));
-  if (!name) return '';
-  return new URL(name, new URL(`${THUMBNAIL_FOLDER}/`, folderUrl(folderKey))).href;
+export function imageSources(folderKey, filename) {
+  const name = encodeFilename(filename);
+  if (!name) return [];
+  const bases = folderBases(folderKey);
+  const first = preferred.get(folderKey) ?? 0;
+  const order = bases.map((_, i) => i).sort((a, b) => (a === first ? -1 : b === first ? 1 : a - b));
+  return order.map((i) => new URL(name, bases[i]).href);
+}
+
+/** Remember which folder served `url`, so later images try it first. */
+export function rememberFolder(folderKey, url) {
+  const bases = folderBases(folderKey);
+  let best = -1;
+  bases.forEach((base, i) => {
+    if (url.startsWith(base.href) && (best === -1 || base.href.length > bases[best].href.length)) best = i;
+  });
+  if (best !== -1) preferred.set(folderKey, best);
 }

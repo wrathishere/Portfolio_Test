@@ -23,7 +23,18 @@ export function createSiteFooter() {
         'div',
         { class: 'site-footer__inner' },
         h('p', {}, `© ${new Date().getFullYear()} ${SITE.name}`),
-        h('a', { class: 'site-footer__top', href: '#top' }, 'Back to top ↑'),
+        h(
+          'a',
+          {
+            class: 'site-footer__top',
+            href: '#top',
+            onclick: (e) => {
+              e.preventDefault();
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            },
+          },
+          'Back to top ↑',
+        ),
       ),
     ),
   );

@@ -1,47 +1,46 @@
 import { h } from '../utils/dom.js';
-import { loadWithFallback } from '../utils/imageFallback.js';
+import { createImageLoader } from '../utils/imageFallback.js';
 
 /**
- * A single gallery image. Shows the optimized thumbnail (`src`) at its natural
- * aspect ratio — never cropped or stretched — and fades it in once loaded.
+ * A single gallery image (WebP, named in the sheet). Lazy-loaded, fades in once
+ * loaded, and degrades to a quiet "Image unavailable" tile naming the file if
+ * no candidate folder serves it (see IMAGE_FOLDERS), so problems are easy to spot.
  *
- * Fallbacks, in order:
- *   1. thumbnail (`src`)  →  2. original (`fallbackSrc`)  →  3. quiet
- *      "Image unavailable" tile naming the file, so the problem is easy to spot.
+ * Natural aspect ratio by default (never cropped or stretched). Pass `ratio`
+ * (a CSS aspect-ratio such as "4 / 5") for a fixed-shape cell in a symmetric
+ * grid; the image then fills the cell.
  *
  * @param {object} o
- * @param {string} o.src          thumbnail URL (or the original if there is no thumbnail)
- * @param {string} [o.fallbackSrc] original URL, used if `src` fails
+ * @param {string} o.folderKey    key in IMAGE_FOLDERS
+ * @param {string} o.file         WebP filename from the sheet
  * @param {string} o.alt
- * @param {string} o.file         original filename from the sheet (for diagnostics)
  * @param {boolean} [o.priority]  load eagerly (above-the-fold image)
- * @param {(button: HTMLButtonElement) => void} [o.onActivate]
+ * @param {string} [o.ratio]
+ * @param {'button'|'span'} [o.as] 'span' when the tile sits inside a link
+ * @param {(el: HTMLElement) => void} [o.onActivate]
  */
-export function createImageTile({ src, fallbackSrc, alt, file, priority = false, onActivate }) {
-  const button = h('button', {
-    class: 'tile',
-    type: 'button',
+export function createImageTile({ folderKey, file, alt, priority = false, ratio, as = 'button', onActivate }) {
+  const isButton = as === 'button';
+  const tile = h(as, {
+    class: `tile${ratio ? ' tile--fixed' : ''}${isButton ? '' : ' tile--static'}`,
+    type: isButton ? 'button' : false,
+    style: ratio ? `--ratio: ${ratio}` : false,
+    'aria-label': isButton ? `Open ${alt}` : false,
     dataset: { state: 'loading' },
-    'aria-label': `Open ${alt}`,
   });
 
-  const img = h('img', { class: 'tile__img', alt, decoding: 'async', loading: priority ? 'eager' : 'lazy' });
+  const img = h('img', { class: 'tile__img', alt: isButton ? alt : '', decoding: 'async', loading: priority ? 'eager' : 'lazy' });
 
-  img.addEventListener('load', () => {
-    button.dataset.state = 'ready';
-  });
-
-  loadWithFallback(img, {
-    primary: src,
-    fallback: fallbackSrc,
-    onFallback: () => {
-      button.dataset.thumb = 'fallback';
-      console.warn(`[images] Thumbnail failed for "${file}" (${src}); using the original instead.`);
+  const loader = createImageLoader(img, {
+    folderKey,
+    onLoad: () => {
+      tile.dataset.state = 'ready';
     },
-    onFail: () => {
-      button.dataset.state = 'error';
-      button.disabled = true;
-      button.replaceChildren(
+    onFallback: (url) => console.info(`[images] "${file}" not found in the first folder; trying ${url}`),
+    onFail: (urls) => {
+      tile.dataset.state = 'error';
+      if (isButton) tile.disabled = true;
+      tile.replaceChildren(
         h(
           'span',
           { class: 'tile__fallback' },
@@ -50,14 +49,16 @@ export function createImageTile({ src, fallbackSrc, alt, file, priority = false,
         ),
       );
       console.warn(
-        `[images] Could not load "${file}" (${fallbackSrc || src}). Check the exact filename, including letter case, and that it is in the image folder.`,
+        `[images] Could not load "${file}" (tried ${urls.join(', ') || 'no filename'}). ` +
+          'Check the exact filename, including letter case, and that the .webp is in the category folder.',
       );
     },
   });
 
-  if (img.complete && img.naturalWidth > 0) button.dataset.state = 'ready';
+  tile.append(img);
+  loader.load(file);
+  if (img.complete && img.naturalWidth > 0) tile.dataset.state = 'ready';
 
-  button.append(img);
-  if (onActivate) button.addEventListener('click', () => onActivate(button));
-  return button;
+  if (onActivate && isButton) tile.addEventListener('click', () => onActivate(tile));
+  return tile;
 }

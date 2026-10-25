@@ -1,17 +1,20 @@
 import { h } from '../utils/dom.js';
+import { createImageLoader } from '../utils/imageFallback.js';
+import { imageSources } from '../utils/paths.js';
 
 /**
  * Project detail view: a full-screen dialog with the project's images, its
  * description, keyboard (←/→/Esc) and swipe navigation. Built on <dialog>, so
  * focus is trapped and Esc works natively. One instance serves the whole page.
  *
- * This is the ONLY place original (full-resolution) images are requested. Items
- * are `{ src: original, thumb?: preview, alt }`. If an original fails, the
- * thumbnail (already cached from the grid) is shown instead.
+ * Items are `{ folderKey, file, alt }` (a WebP named in the sheet). `project`
+ * is `{ name, year?, meta?, paragraphs }`; `meta` (e.g. "THI · 2026") replaces
+ * `year` in the subtitle line. With one item the prev/next controls are hidden.
  */
 export function createLightbox() {
   let dialog = null;
   let els = null;
+  let loader = null;
   let state = { items: [], index: 0, project: null, opener: null };
 
   function build() {
@@ -42,19 +45,15 @@ export function createLightbox() {
     els.next.addEventListener('click', () => go(1));
     els.close.addEventListener('click', () => dialog.close());
 
-    els.img.addEventListener('load', () => {
-      els.status.textContent = '';
-      els.img.hidden = false;
-    });
-    els.img.addEventListener('error', () => {
-      // Original failed: fall back to the thumbnail once, otherwise give up.
-      const item = state.items[state.index];
-      if (item?.thumb && els.img.getAttribute('src') !== item.thumb) {
-        els.img.src = item.thumb;
-        return;
-      }
-      els.img.hidden = true;
-      els.status.textContent = 'This image couldn’t be loaded.';
+    loader = createImageLoader(els.img, {
+      onLoad: () => {
+        els.status.textContent = '';
+        els.img.hidden = false;
+      },
+      onFail: () => {
+        els.img.hidden = true;
+        els.status.textContent = 'This image couldn’t be loaded.';
+      },
     });
 
     // Click on empty stage area closes (but not on the image itself).
@@ -94,11 +93,12 @@ export function createLightbox() {
     els.img.hidden = false;
     els.status.textContent = 'Loading…';
     els.img.alt = item.alt;
-    els.img.src = item.src; // original, full resolution
+    loader.load(item.file, item.folderKey);
 
     els.title.textContent = project.name;
-    els.year.textContent = project.year || '';
-    els.year.hidden = !project.year;
+    const meta = project.meta ?? project.year ?? '';
+    els.year.textContent = meta;
+    els.year.hidden = !meta;
     els.text.replaceChildren(...project.paragraphs.map((p) => h('p', {}, p)));
     els.text.hidden = project.paragraphs.length === 0;
     els.counter.textContent = `${index + 1} / ${items.length}`;
@@ -106,9 +106,12 @@ export function createLightbox() {
     const single = items.length < 2;
     els.prev.hidden = els.next.hidden = single;
 
-    // Warm the cache for the NEXT image only (originals are large).
+    // Warm the cache for the NEXT image only.
     const next = items[(index + 1) % items.length];
-    if (next && next !== item) new Image().src = next.src;
+    if (next && next !== item) {
+      const [url] = imageSources(next.folderKey, next.file);
+      if (url) new Image().src = url;
+    }
   }
 
   function go(step) {

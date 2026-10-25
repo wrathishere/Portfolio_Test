@@ -1,128 +1,107 @@
 # Graphic Design Portfolio
 
-A static, dependency-free portfolio site (plain HTML, CSS and ES modules) that reads its content from a Google Sheet. No build step, no backend, no API keys.
+A static, dependency-free portfolio (plain HTML, CSS and ES modules) driven by a Google Sheet. No build step, no backend, no API keys.
 
-**Built so far:** Logo Designs page (plus a placeholder Home page).
-**Ready for later:** Social Media Work, Packaging & Misc, Motion, About.
+**Pages built:** Branding, Social Media Work (plus a placeholder Home).
+**Ready for later:** Packaging & Misc, Motion, About.
 
-## Project structure
+## Structure
 
 ```
-index.html                  Home (placeholder)
-logo-designs.html           Logo Designs page
-assets/
-  css/base.css              Design tokens, reset, typography
-  css/components.css        Nav, hero, projects, gallery, lightbox, states
-  js/config.js              Sheet ID, tab names, image folders, navigation, site name
-  js/shell.js               Mounts shared header + footer on every page
-  js/data/sheetsClient.js   Fetches CSV from Google Sheets (with snapshot fallback)
-  js/domain/                normalizeRows → groupProjects → loadProjects (pure logic)
-  js/components/            siteNav, imageTile, masonry, projectSection, lightbox, states…
-  js/pages/categoryPage.js  Reusable gallery-page controller
-  js/pages/logoDesigns.js   Logo page = categoryPage configured for the "logo" tab
-data/logo.snapshot.csv      Offline fallback copy of the sheet's logo tab
-Images/
-  Logo Designs/  Social Media/  Misc/  Motion/  Packaging/
+index.html            Home (placeholder)
+branding.html         Branding (tabs: logo + branding)
+social-media.html     Social Media Work (tab: social)
+logo-designs.html     Redirect to branding.html (keeps old links working)
+assets/css/           base.css (tokens, type) · components.css
+assets/js/
+  config.js           Sheet ID, tabs, image folders, nav, site name, footer/CTA copy
+  shell.js            Header, footer, CTA band, skip link
+  data/               sheetsClient.js (fetch CSV, snapshot fallback)
+  domain/             normalizeRows → buildProjects → loadProjects · socialItems (format model)
+  components/         siteNav, projectCard, projectDetail, imageTile, multiFilter, lightbox, masonry …
+  pages/              brandingPage.js · socialPage.js (+ branding.js / socialMedia.js controllers)
+  utils/              csv, paths (image URLs), imageFallback, text, dom
+data/*.snapshot.csv   Offline fallback copies of sheet tabs
+Images/               Logo Designs/ · Social Media/ · Misc/ · Motion/ · Packaging/
 ```
 
-Data flow: `sheetsClient` (fetch) → `normalizeRows` (validate/clean) → `groupProjects` (group + sort) → components (render). Each layer is independent.
+Data flow: `sheetsClient` (fetch) → `normalizeRows` (validate) → `buildProjects` (sort/ids) → page controller → components.
 
-## How the sheet is read
+## Sheet format
 
-- Tab: `logo`. Columns: `image | category | sub-category | year | text | order | Featured | thumbnail`.
-- Rows are grouped by `sub-category` (one group = one project).
-- Projects are sorted by `order` (lowest value in the group). Projects without a valid `order` go last.
-- Images inside a project keep the spreadsheet row order.
-- Year and description come from the first row in the group that has them, so only the first row needs filling in.
-- `Featured` is parsed as a Boolean (TRUE/yes/1) and stored for the future Home page.
-- Rows without an `image` filename are skipped (a warning is logged in the browser console with the sheet row number). Missing descriptions or years are simply not shown.
+One **row = one project** (Branding) or **one campaign** (Social). Columns are matched by header name, in any order; every column is optional except that a row needs at least one image filename.
 
-### Thumbnails (all five categories)
+| Tab | Columns |
+| --- | --- |
+| `logo`, `branding` | `Project Name · category · sub-category · year · text · order · Featured · thumbnail · image1 … image9` |
+| `social` | `category · sub-category · year · text · order · Featured · client · image1 … image9` |
 
-Each category folder has a `Thumbnail/` subfolder of optimized `.webp` previews, named in the sheet's `thumbnail` column (H), e.g. `Images/Logo Designs/Thumbnail/kynn_logo (1).webp`.
+- **Sorting:** by `order` ascending (rows without a number go last). On Branding, the `logo` and `branding` tabs are merged; ties keep `logo` first.
+- **Branding:** the gallery shows only each project's `thumbnail` (falls back to `image1`). Clicking opens the project view with the thumbnail followed by `image1…N` in column order. A file listed twice is shown once. Name = `Project Name`, else `sub-category`.
+- **Social:** `category` is the **format**: `Portrait(4:5)`, `Square(1:1)` or `Story(9:16)` (case/spacing flexible; anything else lands in an "Other" section). `sub-category` is the **campaign**, `client` the client. Every `imageN` becomes its own grid cell.
+- **Featured:** parsed as TRUE/yes/1 and stored for the future Home page.
+- Rows without any image are skipped (console warning with the sheet row number). Missing text/year are simply not shown. If one tab fails to load, the others still render.
 
-- Gallery grids load the **thumbnail** only. The **original** (`image` column) is requested only when a lightbox opens (plus the next image, to make arrows instant).
-- Blank `thumbnail` cell, missing file or failed load → the grid quietly falls back to the original (a console warning names the file).
-- If the original also fails, the tile shows "Image unavailable" with the filename.
-- The `Thumbnail` folder name lives in `THUMBNAIL_FOLDER` (`assets/js/config.js`); category folders in `IMAGE_FOLDERS`. Names are case-sensitive on GitHub Pages.
+### Access (read-only, no credentials)
 
-### Filters
+Share the sheet as **Anyone with the link → Viewer**. The site reads Google's public CSV export. Optionally paste a "Publish to web → CSV" URL into `SHEET.csvUrlOverrides` in `config.js`. Never add API keys to this repo.
 
-If the sheet's `category` column holds two or more distinct values, filter tabs ("All · …") appear automatically above the projects. With a single value (currently "Logo Design") the bar stays hidden.
+### Offline snapshots
 
-### Sheet access (read-only, no credentials)
-
-The site uses Google's public CSV export. The sheet must be shared as **Anyone with the link → Viewer** (it currently is). Alternatively, use **File → Share → Publish to web → CSV** for the `logo` tab and paste that URL into `SHEET.csvUrlOverrides.logo` in `assets/js/config.js`.
-
-Never add an API key or service-account file to this repo.
-
-### Fallback snapshot
-
-If the live sheet can't be reached, the page falls back to `data/logo.snapshot.csv`. To refresh it after you edit the sheet:
+If Google can't be reached, a tab falls back to `data/<tab>.snapshot.csv` when it exists (`logo` and `social` are included; add `branding.snapshot.csv` the same way). Refresh with:
 
 ```bash
-curl -L "https://docs.google.com/spreadsheets/d/1EIJz_W2_cMMuK1-RlyINFOGgGybd0uHkx2ncyyX6mF0/gviz/tq?tqx=out:csv&sheet=logo" -o data/logo.snapshot.csv
+curl -L "https://docs.google.com/spreadsheets/d/<SHEET_ID>/gviz/tq?tqx=out:csv&sheet=social" -o data/social.snapshot.csv
 ```
 
-Delete the file if you'd rather show an error than possibly-stale content. When the snapshot is used, `<html data-content-source="snapshot">` is set.
+## Images (WebP only)
 
-## Images
+Filenames in the sheet are the exact `.webp` files; there is no separate original. For each category, `IMAGE_FOLDERS` in `config.js` lists where to look, in order:
 
-Place logo images in `Images/Logo Designs/`, using the **exact** filenames from the `image` column.
+1. `Images/<Category>/Thumbnail/` (where the repo keeps its WebP files today)
+2. `Images/<Category>/`
 
-- GitHub Pages is case-sensitive: `Logo.JPG` and `logo.jpg` are different files.
-- Spaces and parentheses (e.g. `kynn_logo (1).jpg`) work; the site encodes them automatically.
-- Missing/mistyped files show an "Image unavailable" tile with the filename, plus a console warning.
-- Optional hero image: set `data-hero-image="yourfile.jpg"` on `#hero` in `logo-designs.html`.
+The first folder that serves a file is remembered for that category, so the second is only tried if the first misses. Branding uses `Images/Logo Designs/`; Social uses `Images/Social Media/`. Folder and file names are case-sensitive on GitHub Pages; spaces and parentheses are fine.
 
-Note: `Images/*/.gitkeep` placeholder files are included so empty folders are committed. They can be removed once the folders contain images.
+All images are lazy-loaded (the gallery downloads covers only; a project's other images load in its view). A file that can't be found shows an "Image unavailable" tile naming it, plus a console warning.
+
+## Social Media page
+
+- Sections **Portrait 4:5 → Square 1:1 → Story 9:16**, each a symmetric three-column grid with cells fixed to that ratio (stays three columns on phones).
+- Filters **Format / Client / Campaign** combine and cascade (options that would give no result are hidden). A filter with only one possible value is hidden.
+- Clicking an image opens just that image in the lightbox, with campaign, client · year and description.
+
+## Branding page
+
+- Uniform card grid (cover ratio set by `--card-ratio` in `components.css`, default 4:3). Category tabs appear when the tabs hold two or more distinct `category` values.
+- Project view: `branding.html#project/<id>` (shareable, works with the back button). `<id>` is the slugified project name.
 
 ## Run locally
 
-ES modules need HTTP (opening the file directly won't work):
-
 ```bash
-python3 -m http.server 8000
-# open http://localhost:8000/logo-designs.html
+python3 -m http.server 8000   # then open http://localhost:8000/branding.html
 ```
 
 ## Deploy to GitHub Pages
 
-1. Create a GitHub repository and push the contents of this folder to the `main` branch (the `index.html` must be at the repo root).
-2. In the repo go to **Settings → Pages**.
-3. Under **Build and deployment**, choose **Deploy from a branch**, select `main` and `/ (root)`, then **Save**.
-4. After a minute the site is live at `https://<username>.github.io/<repo>/` (project site) or `https://<username>.github.io/` if the repo is named `<username>.github.io`.
-5. Open `/logo-designs.html` and confirm the projects and images load.
+1. Push this folder to the repo root (`index.html` at the top level).
+2. **Settings → Pages → Deploy from a branch → `main` / (root)**.
+3. Visit `https://<user>.github.io/<repo>/branding.html`.
 
-**Subpath support:** all HTML asset links are relative, and every JS-generated link and image URL is resolved from the location of `assets/js/config.js` (`import.meta.url`), so nothing assumes the domain root. No configuration is needed for `/<repo>/` deployments or custom domains.
-
-For a custom domain: **Settings → Pages → Custom domain**, then add the DNS records GitHub lists.
+All links and image URLs are resolved from `assets/js/config.js`'s own location, so project-site subpaths (`/<repo>/`) and custom domains work unchanged.
 
 ## Troubleshooting
 
 | Symptom | Likely cause |
 | --- | --- |
-| "The work couldn't be loaded" | Sheet isn't shared as "Anyone with the link", or the tab was renamed. Check the browser console. |
-| Image tiles say "Image unavailable" | Filename in the sheet doesn't match the file exactly (case!), or the file isn't in `Images/Logo Designs/`. |
-| Old content after editing the sheet | Google caches CSV exports for a few minutes; hard-refresh. |
-| Blank page locally | Opened via `file://`; use the local server above. |
-
-## Adding the next page (e.g. Social Media Work)
-
-1. Copy `logo-designs.html` to `social-media.html` and edit the intro copy and title.
-2. Create `assets/js/pages/social.js`:
-   ```js
-   import { mountCategoryPage } from './categoryPage.js';
-   mountCategoryPage({ activeKey: 'social', tab: 'social', folderKey: 'social' });
-   ```
-   and point the new HTML page's script tag at it.
-3. In `assets/js/config.js`, set `href: 'social-media.html'` on the matching `SITE.nav` item.
-4. Add `data/social.snapshot.csv` if you want the offline fallback.
-5. Pass `masonry: { minColWidth, maxCols }` to `mountCategoryPage` if a category needs a different column rhythm.
+| "The work couldn't be loaded" | Sheet not shared as "Anyone with the link", or tab renamed. See the console. |
+| A tab's projects are missing | That tab failed (console says which); the other tab still shows. |
+| "Image unavailable" tiles | Filename/case differs from the sheet, or the `.webp` isn't in the category folder. |
+| Old data after editing the sheet | Google caches CSV for a few minutes; hard-refresh. |
+| Blank page locally | Opened via `file://`; use the local server. |
 
 ## Customising
 
-- **Name/branding:** `SITE.name` in `assets/js/config.js` (currently "Portfolio").
-- **Colors, type, spacing:** CSS variables at the top of `assets/css/base.css`.
-- **Header note, footer tagline, closing call-to-action band:** `SITE.navNote`, `SITE.tagline`, `SITE.cta` in `assets/js/config.js` (set `cta.href` / `cta.image` when ready).
-- **Font:** Jost loads from Google Fonts in each HTML `<head>`; remove the link to use system fallbacks.
+- Name, nav, header note, footer tagline, CTA band: `SITE` in `assets/js/config.js`.
+- Colors, type, spacing: CSS variables at the top of `assets/css/base.css`.
+- Hero image (optional): set `data-hero-image="file.webp"` on `#hero` in the page's HTML.
