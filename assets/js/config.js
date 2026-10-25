@@ -91,6 +91,17 @@ export const SHEET = {
  */
 const withThumbs = (folder) => [`${folder}Thumbnail/`, folder];
 
+/**
+ * PDF viewer library, loaded on demand the first time a PDF modal is opened
+ * (nothing is downloaded for visitors who never open one). Pinned version.
+ * To self-host instead, copy pdf.min.js and pdf.worker.min.js from the
+ * "pdfjs-dist@3.11.174" package into assets/vendor/ and point these at them.
+ */
+export const PDFJS = {
+  lib: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+  worker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+};
+
 export const IMAGE_FOLDERS = {
   logo: withThumbs('Images/Logo Designs/'),
   branding: withThumbs('Images/Logo Designs/'),
