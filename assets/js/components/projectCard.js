@@ -1,4 +1,5 @@
 import { h } from '../utils/dom.js';
+import { fileUrl } from '../utils/paths.js';
 import { createImageTile } from './imageTile.js';
 
 /**
@@ -9,16 +10,35 @@ import { createImageTile } from './imageTile.js';
  * middle-click and shared URLs. Only the cover is loaded here — the rest of
  * the project's images load in the detail view.
  *
+ * Branding projects with a PDF (`project.viewer === 'pdf'`) link to the PDF itself
+ * (so middle-click / "open in new tab" / no-JS just work) and a normal click calls
+ * `onOpenPdf` to show it in the modal instead. Everything else opens the detail view.
+ *
  * @param {import('../domain/buildProjects.js').Project} project
- * @param {{ folderKey: string, priority?: boolean }} ctx
+ * @param {{ folderKey: string, priority?: boolean,
+ *           onOpenPdf?: (project: import('../domain/buildProjects.js').Project, opener: HTMLElement) => void }} ctx
  */
-export function createProjectCard(project, { folderKey, priority = false }) {
+export function createProjectCard(project, { folderKey, priority = false, onOpenPdf }) {
   const meta = [project.category, project.year].filter(Boolean).join(' / ');
   const count = project.images.length;
+  const asPdf = project.viewer === 'pdf' && onOpenPdf;
+
+  const link = asPdf
+    ? {
+        href: fileUrl(project.tab, project.pdf),
+        target: '_blank',
+        rel: 'noopener',
+        onclick: (e) => {
+          if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+          e.preventDefault();
+          onOpenPdf(project, e.currentTarget);
+        },
+      }
+    : { href: `#project/${project.id}` };
 
   return h(
     'a',
-    { class: 'card', href: `#project/${project.id}`, 'aria-label': `${project.name}${meta ? `, ${meta}` : ''} — view project` },
+    { class: 'card', ...link, 'aria-label': `${project.name}${meta ? `, ${meta}` : ''} — ${asPdf ? 'view PDF' : 'view project'}` },
     createImageTile({
       folderKey,
       file: project.cover,
