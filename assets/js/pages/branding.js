@@ -9,10 +9,12 @@ import { loadProjects } from '../domain/loadProjects.js';
 import { createProjectCard } from '../components/projectCard.js';
 import { createProjectDetail } from '../components/projectDetail.js';
 import { createLightbox } from '../components/lightbox.js';
+import { createPdfModal } from '../components/pdfModal.js';
 import { renderFilters } from '../components/multiFilter.js';
 import { renderLoading, renderError, renderEmpty } from '../components/states.js';
 import { observeReveal } from '../components/reveal.js';
 import { mountHeroImage } from '../components/heroImage.js';
+import { fileUrl } from '../utils/paths.js';
 import { h } from '../utils/dom.js';
 
 const PROJECT_HASH = '#project/';
@@ -26,6 +28,7 @@ export function mountBrandingPage({ activeKey = 'branding', tabs = ['logo', 'bra
   const listEl = document.getElementById('projects');
   const detailEl = document.getElementById('project-detail');
   const lightbox = createLightbox();
+  const pdfModal = createPdfModal();
   const pageTitle = document.title;
 
   mountHeroImage(hero, 'logo');
@@ -47,9 +50,19 @@ export function mountBrandingPage({ activeKey = 'branding', tabs = ['logo', 'bra
     route();
   };
 
+  // Branding projects with a PDF open it in the modal (cards call this directly).
+  const openPdf = (project, opener = null) =>
+    pdfModal.open({ title: project.name, url: fileUrl(project.tab, project.pdf), opener });
+
   const showDetail = (id) => {
-    if (!listView.hidden) listScroll = window.scrollY;
     const project = projects.find((p) => p.id === id);
+    if (project?.viewer === 'pdf') {
+      // #project/<id> for a PDF project (e.g. a pasted link): show the gallery with the PDF open.
+      showList();
+      openPdf(project);
+      return;
+    }
+    if (!listView.hidden) listScroll = window.scrollY;
     listView.hidden = true;
     detailEl.hidden = false;
 
@@ -91,7 +104,7 @@ export function mountBrandingPage({ activeKey = 'branding', tabs = ['logo', 'bra
         return;
       }
 
-      projects.forEach((project, i) => cards.set(project.id, createProjectCard(project, { folderKey: project.tab, priority: i < 3 })));
+      projects.forEach((project, i) => cards.set(project.id, createProjectCard(project, { folderKey: project.tab, priority: i < 3, onOpenPdf: openPdf })));
 
       const show = (visible) => {
         listEl.replaceChildren(h('div', { class: 'cards' }, visible.map((p) => cards.get(p.id))));
