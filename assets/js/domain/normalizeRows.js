@@ -6,10 +6,12 @@
  * matched by header name (case/space-insensitive, any order):
  *
  *   Project Name | category | sub-category | year | text | order | Featured |
- *   client | thumbnail | image1 … imageN
+ *   client | thumbnail | image1 … imageN | pdf
  *
  * Every column is optional except that a row needs at least one image filename.
  * `thumbnail` is the project's cover; image1…N are its other images.
+ * A project's PDF may be named in a `pdf` column OR in any of thumbnail /
+ * image1…N (anything ending in ".pdf" is treated as the PDF, never as an image).
  */
 export class SheetSchemaError extends Error {
   constructor(message) {
@@ -19,6 +21,7 @@ export class SheetSchemaError extends Error {
 }
 
 const IMAGE_COLUMN = /^image(\d+)$/;
+const PDF_FILE = /\.pdf$/i;
 const TRUTHY = /^(true|yes|y|1|✓|✔|x)$/i;
 
 const clean = (v) => String(v ?? '').trim();
@@ -43,7 +46,7 @@ export function normalizeProjectRows(table, { tab = '' } = {}) {
     .sort((a, b) => a.n - b.n)
     .map((c) => c.name);
 
-  if (!imageColumns.length && !table.headers.includes('thumbnail')) {
+  if (!imageColumns.length && !table.headers.includes('thumbnail') && !table.headers.includes('pdf')) {
     // gviz silently returns the FIRST tab when a tab name doesn't exist, which
     // can also surface here as unexpected columns.
     throw new SheetSchemaError(
@@ -56,10 +59,12 @@ export function normalizeProjectRows(table, { tab = '' } = {}) {
   const invalid = [];
 
   table.records.forEach((rec, position) => {
-    const thumbnail = clean(rec.thumbnail);
-    const others = imageColumns.map((col) => clean(rec[col])).filter(Boolean);
+    const cells = [clean(rec.thumbnail), ...imageColumns.map((col) => clean(rec[col]))].filter(Boolean);
+    const pdf = [clean(rec.pdf), ...cells].find((value) => PDF_FILE.test(value)) ?? '';
+    const files = cells.filter((value) => !PDF_FILE.test(value));
+    const thumbnail = PDF_FILE.test(clean(rec.thumbnail)) ? '' : clean(rec.thumbnail);
     // Cover first, then image1…N; a file named twice is shown once.
-    const images = [...new Set([thumbnail, ...others].filter(Boolean))];
+    const images = [...new Set([thumbnail, ...files].filter(Boolean))];
 
     if (!images.length) {
       invalid.push({ row: rec.__row, reason: 'no image filenames' });
@@ -81,6 +86,7 @@ export function normalizeProjectRows(table, { tab = '' } = {}) {
       featured: TRUTHY.test(clean(rec.featured)),
       cover: thumbnail || images[0],
       images,
+      pdf,
     });
   });
 
@@ -102,4 +108,5 @@ export function normalizeProjectRows(table, { tab = '' } = {}) {
  * @property {boolean} featured  eligible for the Home page later
  * @property {string} cover      thumbnail filename (falls back to the first image)
  * @property {string[]} images   every image filename, cover first, in sheet order
+ * @property {string} pdf        PDF filename, or '' when the row has none
  */
