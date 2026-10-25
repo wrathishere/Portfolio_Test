@@ -42,6 +42,18 @@ export function imageSources(folderKey, filename) {
   return order.map((i) => new URL(name, bases[i]).href);
 }
 
+/**
+ * URL of a non-image file such as a PDF. PDFs live in the category folder itself
+ * (the last entry of IMAGE_FOLDERS, e.g. "Images/Logo Designs/Aaksha.pdf"),
+ * not in its Thumbnail/ subfolder. Returns '' for a blank filename.
+ */
+export function fileUrl(folderKey, filename) {
+  const name = encodeFilename(filename);
+  if (!name) return '';
+  const bases = folderBases(folderKey);
+  return new URL(name, bases[bases.length - 1]).href;
+}
+
 /** Remember which folder served `url`, so later images try it first. */
 export function rememberFolder(folderKey, url) {
   const bases = folderBases(folderKey);
