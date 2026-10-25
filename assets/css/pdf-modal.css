@@ -1,0 +1,214 @@
+/* ==========================================================================
+   PDF modal (Branding projects). Loaded after components.css; uses its tokens.
+   ========================================================================== */
+
+.pdfm {
+  /* Large and centered; the dimmed page shows around it. */
+  width: min(1100px, calc(100vw - 32px));
+  height: min(92dvh, 1000px);
+  max-width: none;
+  max-height: none;
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: var(--bg);
+  color: var(--ink);
+  box-shadow: 0 24px 80px rgba(22, 22, 21, 0.28);
+  overflow: hidden;
+}
+.pdfm[open] {
+  display: flex;
+  flex-direction: column;
+  animation: pdfm-in 0.3s var(--ease);
+}
+.pdfm::backdrop {
+  background: rgba(22, 22, 21, 0.55);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+@keyframes pdfm-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* ---------- Toolbar ---------- */
+.pdfm__bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  flex-wrap: wrap;
+  padding: 14px clamp(16px, 2.4vw, 28px);
+  border-bottom: 1px solid var(--line);
+}
+.pdfm__heading {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  min-width: 0;
+}
+.pdfm__title {
+  font-family: var(--font-display);
+  font-size: clamp(20px, 2.2vw, 26px);
+  font-weight: 300;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pdfm__pages {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.pdfm__tools {
+  display: flex;
+  align-items: center;
+  gap: 6px clamp(12px, 2vw, 24px);
+  flex-wrap: wrap;
+}
+.pdfm__zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.pdfm__zoom[hidden] {
+  display: none;
+}
+.pdfm__zoom-label {
+  min-width: 4ch;
+  text-align: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+.pdfm__btn {
+  padding: 8px 10px;
+  border: 0;
+  background: none;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--ink);
+  cursor: pointer;
+  transition: opacity 0.25s;
+}
+.pdfm__btn:hover {
+  opacity: 0.55;
+}
+.pdfm__btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+.pdfm__btn--link {
+  border-bottom: 1px solid var(--ink);
+  padding-inline: 2px;
+  padding-block: 4px 3px;
+}
+
+/* ---------- Scrolling document area ---------- */
+.pdfm__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto; /* vertical scroll; horizontal appears only when zoomed in */
+  background: var(--surface);
+  overscroll-behavior: contain;
+}
+.pdfm__scroll:focus-visible {
+  outline-offset: -3px;
+}
+.pdfm__scroll.is-frame {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.pdfm__status {
+  padding: 48px 24px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted);
+}
+.pdfm__status:empty {
+  display: none;
+}
+.pdfm__pagelist {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* a zoomed page scrolls from its left edge */
+  gap: 14px;
+  width: max-content;
+  min-width: 100%;
+  padding: clamp(10px, 2vw, 24px);
+}
+.pdfm__pagelist:empty {
+  display: none;
+}
+.pdfm__page {
+  position: relative;
+  flex: 0 0 auto;
+  margin-inline: auto;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(22, 22, 21, 0.08), 0 6px 24px rgba(22, 22, 21, 0.08);
+}
+.pdfm__page[data-state="loading"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, #fff 30%, var(--surface) 50%, #fff 70%) 0 0 / 220% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+.pdfm__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Fallback: the browser's own viewer fills the area */
+.pdfm__scroll.is-frame .pdfm__pagelist {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  gap: 0;
+  align-items: stretch;
+}
+.pdfm__note {
+  padding: 10px 20px;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--bg);
+}
+.pdfm__frame {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: #fff;
+}
+
+/* ---------- Small screens: the modal fills the viewport ---------- */
+@media (max-width: 640px) {
+  .pdfm {
+    width: 100vw;
+    height: 100dvh;
+    box-shadow: none;
+  }
+  .pdfm__bar {
+    padding: 10px 14px;
+  }
+  .pdfm__heading {
+    flex: 1 1 100%;
+  }
+  .pdfm__tools {
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+}
