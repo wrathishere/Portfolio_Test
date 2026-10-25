@@ -12,6 +12,14 @@
 import { slugify, splitParagraphs } from '../utils/text.js';
 
 /**
+ * Project type comes from the `category` field: "Branding" / "Brand Identity"
+ * are branding projects; anything else (e.g. "Logo Design") is a logo project.
+ * A category naming both ("Logo & Branding") counts as logo, so existing
+ * image-based projects never change behaviour.
+ */
+export const isBrandingCategory = (category) => /brand/i.test(category) && !/logo/i.test(category);
+
+/**
  * @param {import('./normalizeRows.js').ProjectRow[]} rows  in tab order
  * @returns {Project[]}
  */
@@ -55,6 +63,11 @@ export function buildProjects(rows) {
       tab: row.tab,
       cover: row.cover,
       images: row.images,
+      pdf: row.pdf,
+      type: isBrandingCategory(row.category) ? 'branding' : 'logo',
+      // Branding projects that have a PDF open it in a modal; everything else
+      // (logo projects, or branding without a PDF) keeps the image detail view.
+      viewer: isBrandingCategory(row.category) && row.pdf ? 'pdf' : 'images',
     };
   });
 }
@@ -74,4 +87,7 @@ export function buildProjects(rows) {
  * @property {string} tab
  * @property {string} cover
  * @property {string[]} images
+ * @property {string} pdf
+ * @property {'branding'|'logo'} type    from `category`
+ * @property {'pdf'|'images'} viewer     how the project opens from the gallery
  */
